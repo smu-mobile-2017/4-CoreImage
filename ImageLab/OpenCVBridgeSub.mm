@@ -19,6 +19,7 @@ using namespace cv;
 
 @implementation OpenCVBridgeSub
 @dynamic image;
+//@dynamic just tells the compiler that the getter and setter methods are implemented not by the class itself but somewhere else (like the superclass or will be provided at runtime).
 
 -(void)processImage{
     
