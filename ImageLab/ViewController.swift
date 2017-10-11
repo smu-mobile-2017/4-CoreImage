@@ -21,7 +21,10 @@ class ViewController: UIViewController   {
     //MARK: Outlets in view
     @IBOutlet weak var flashSlider: UISlider!
     @IBOutlet weak var stageLabel: UILabel!
-    
+	
+	@IBOutlet weak var flashToggleButton: UIButton!
+	@IBOutlet weak var cameraSwitchButton: UIButton!
+	
     //MARK: ViewController Hierarchy
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -53,15 +56,15 @@ class ViewController: UIViewController   {
     
     //MARK: Process image output
     func processImage(inputImage:CIImage) -> CIImage{
-        
+		/*
         // detect faces
         let f = getFaces(img: inputImage)
         
         // if no faces, just return original image
         if f.count == 0 { return inputImage }
-        
+        */
         var retImage = inputImage
-        
+
         // if you just want to process on separate queue use this code
         // this is a NON BLOCKING CALL, but any changes to the image in OpenCV cannot be displayed real time
 //        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0)) { () -> Void in
@@ -80,12 +83,22 @@ class ViewController: UIViewController   {
         // or any bounds to only process a certain bounding region in OpenCV
         self.bridge.setTransforms(self.videoManager.transform)
         self.bridge.setImage(retImage,
-                             withBounds: f[0].bounds, // the first face bounds
+                             withBounds: /*f[0].bounds*/ retImage.extent, // the first face bounds
                              andContext: self.videoManager.getCIContext())
         
-        self.bridge.processImage()
+		let isFinger: Bool = self.bridge.processImage()
         retImage = self.bridge.getImageComposite() // get back opencv processed part of the image (overlayed on original)
-        
+		
+		DispatchQueue.main.async {
+			self.flashToggleButton.isEnabled = !isFinger
+			self.cameraSwitchButton.isEnabled = !isFinger
+			if(isFinger) {
+				let _ = self.videoManager.turnOnFlashwithLevel(1.0)
+			} else {
+				self.videoManager.turnOffFlash()
+			}
+		}
+		
         return retImage
     }
     
@@ -161,9 +174,9 @@ class ViewController: UIViewController   {
         self.videoManager.toggleCameraPosition()
     }
     
-    @IBAction func setFlashLevel(sender: UISlider) {
+    @IBAction func setFlashLevel(_ sender: UISlider) {
         if(sender.value>0.0){
-            self.videoManager.turnOnFlashwithLevel(sender.value)
+			let _ = self.videoManager.turnOnFlashwithLevel(sender.value)
         }
         else if(sender.value==0.0){
             self.videoManager.turnOffFlash()
