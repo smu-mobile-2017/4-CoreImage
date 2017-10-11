@@ -20,6 +20,7 @@
 		B67B72BF1D99D0AD008EDDE1 /* nose.xml in Resources */ = {isa = PBXBuildFile; fileRef = B67B72BE1D99D0AD008EDDE1 /* nose.xml */; };
 		B69F98B51DA43DF500F1A1B8 /* OpenCVBridgeSub.mm in Sources */ = {isa = PBXBuildFile; fileRef = B69F98B41DA43DF500F1A1B8 /* OpenCVBridgeSub.mm */; };
 		B6E657991D95AA4500E75C60 /* VideoAnalgesic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6E657981D95AA4500E75C60 /* VideoAnalgesic.swift */; };
+		E26B19431F8E7122001CEFE8 /* FaceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26B19421F8E7122001CEFE8 /* FaceViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		B69F98B41DA43DF500F1A1B8 /* OpenCVBridgeSub.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OpenCVBridgeSub.mm; sourceTree = "<group>"; };
 		B69F98B61DA441BD00F1A1B8 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
 		B6E657981D95AA4500E75C60 /* VideoAnalgesic.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = VideoAnalgesic.swift; path = ImageDSPUtils/VideoAnalgesic.swift; sourceTree = SOURCE_ROOT; };
+		E26B19421F8E7122001CEFE8 /* FaceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +120,7 @@
 			children = (
 				B650B31A1D8340F0000114A1 /* AppDelegate.swift */,
 				B650B31C1D8340F0000114A1 /* ViewController.swift */,
+				E26B19421F8E7122001CEFE8 /* FaceViewController.swift */,
 				B650B31E1D8340F0000114A1 /* Main.storyboard */,
 				B650B3211D8340F0000114A1 /* Assets.xcassets */,
 				B650B3231D8340F0000114A1 /* LaunchScreen.storyboard */,
@@ -298,6 +301,7 @@
 				B6E657991D95AA4500E75C60 /* VideoAnalgesic.swift in Sources */,
 				B650B31D1D8340F0000114A1 /* ViewController.swift in Sources */,
 				B650B31B1D8340F0000114A1 /* AppDelegate.swift in Sources */,
+				E26B19431F8E7122001CEFE8 /* FaceViewController.swift in Sources */,
 				B69F98B51DA43DF500F1A1B8 /* OpenCVBridgeSub.mm in Sources */,
 				B67B72BB1D996ADE008EDDE1 /* OpenCVBridge.mm in Sources */,
 			);
