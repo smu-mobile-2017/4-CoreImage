@@ -171,8 +171,34 @@
                     <view key="view" contentMode="scaleToFill" id="Clr-D7-DpN">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="0Ke-DY-Nzp">
+                                <rect key="frame" x="217" y="611" width="142" height="36"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="20"/>
+                                <state key="normal" title="Toggle Camera"/>
+                                <connections>
+                                    <action selector="switchCamera:" destination="fFX-we-tR3" eventType="touchUpInside" id="32U-yW-y9h"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RTM-di-cvE">
+                                <rect key="frame" x="187.5" y="72" width="0.0" height="0.0"/>
+                                <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="20"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstItem="Nxh-U0-hdf" firstAttribute="top" secondItem="0Ke-DY-Nzp" secondAttribute="bottom" constant="20" id="Ls0-0g-oIZ"/>
+                            <constraint firstItem="RTM-di-cvE" firstAttribute="top" secondItem="XRK-Cz-t2s" secondAttribute="bottom" constant="8" id="NO6-i3-alO"/>
+                            <constraint firstItem="RTM-di-cvE" firstAttribute="centerX" secondItem="Clr-D7-DpN" secondAttribute="centerX" id="YOU-uK-fi1"/>
+                            <constraint firstItem="0Ke-DY-Nzp" firstAttribute="trailing" secondItem="Clr-D7-DpN" secondAttribute="trailingMargin" id="joA-7B-4dY"/>
+                        </constraints>
                     </view>
+                    <connections>
+                        <outlet property="faceStateLabel" destination="RTM-di-cvE" id="4hM-Ee-JIB"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="mUD-9r-Jl1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>

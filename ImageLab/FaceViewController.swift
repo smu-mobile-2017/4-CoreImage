@@ -10,8 +10,10 @@ import UIKit
 import AVFoundation
 
 class FaceViewController: UIViewController   {
-
-    //MARK: Class Properties
+	//outlet to label for face status
+	@IBOutlet weak var faceStateLabel: UILabel!
+	
+	//MARK: Class Properties
     var videoManager:VideoAnalgesic! = nil
     let pinchFilterIndex = 2
     var detector:CIDetector! = nil
@@ -27,7 +29,8 @@ class FaceViewController: UIViewController   {
         
         // create dictionary for face detection
         // HINT: you need to manipulate these proerties for better face detection efficiency
-        let optsDetector = [CIDetectorAccuracy:CIDetectorAccuracyLow, CIDetectorTracking:true] as [String : Any]
+		let optsDetector = [CIDetectorAccuracy:CIDetectorAccuracyLow,
+		                    CIDetectorTracking:true] as [String : Any]
         
         // setup a face detector in swift
         self.detector = CIDetector(ofType: CIDetectorTypeFace,
@@ -141,8 +144,8 @@ class FaceViewController: UIViewController   {
     
     func getFaces(img:CIImage) -> [CIFaceFeature]{
         // this ungodly mess makes sure the image is the correct orientation
-        let optsFace = [CIDetectorImageOrientation:self.videoManager.ciOrientation]
-		
+		let optsFace = [CIDetectorImageOrientation: self.videoManager.ciOrientation, CIDetectorEyeBlink:true, CIDetectorSmile:true] as [String : Any]
+
 		// get Face Features
         return self.detector.features(in: img, options: optsFace) as! [CIFaceFeature]
     }
@@ -154,14 +157,50 @@ class FaceViewController: UIViewController   {
         let f = getFaces(img: inputImage)
 		
         // if no faces, just return original image
-        if f.count == 0 { return inputImage }
-        
+        if f.count == 0 {
+			//make blank
+			DispatchQueue.main.async {
+				self.faceStateLabel.text = ""
+			}
+			
+			return inputImage
+		}
+		
+		if f.count == 1 {
+			//check first face
+			updateFaceStateStatus(face: f[0])
+		}
+	
         //otherwise apply the filters to the faces
         return applyFiltersToFaces(inputImage: inputImage, features: f)
     }
-    
-    
-
+	
+	func updateFaceStateStatus(face:CIFaceFeature) {
+		var statusText : [String]! = [String]()
+		//var ff = face.rightEyeClosed
+		if(face.hasSmile) {statusText.append("Smiling")}
+		if(face.leftEyeClosed) {statusText.append("Left Eye Closed")}
+		if(face.rightEyeClosed) {statusText.append("Right Eye Closed")}
+		
+		print(face.hasSmile)
+		
+		DispatchQueue.main.async {
+			if(statusText.count == 0) {
+				self.faceStateLabel.text = ""
+			} else if ( statusText.count == 1) {
+				self.faceStateLabel.text = statusText[0]
+			} else if ( statusText.count == 2) {
+				self.faceStateLabel.text = statusText[0] + ", " + statusText[1]
+			} else if ( statusText.count == 3) {
+				self.faceStateLabel.text = statusText[0] + ",  " + statusText[1] + ", and " + statusText[2]
+			}
+		}
+	}
+	
+	@IBAction func switchCamera(_ sender: AnyObject) {
+	        self.videoManager.toggleCameraPosition()
+	
+	}
    
 }
 
