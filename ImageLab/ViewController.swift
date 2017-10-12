@@ -8,181 +8,121 @@
 
 import UIKit
 import AVFoundation
+import Charts
 
-class ViewController: UIViewController   {
-
+class ViewController: UIViewController, ChartViewDelegate {
+	
+	let chartMaximumPoints: Int = 100
+	let framesPerSecond: Double = 120.0
+	
+	var beatsPerMinute: Int? = nil {
+		didSet {
+			DispatchQueue.main.async {
+				if let bpm = self.beatsPerMinute {
+					self.bpmLabel.text = "\(bpm) bpm"
+				} else {
+					self.bpmLabel.text = "—"
+				}
+			}
+		}
+	}
+	
     //MARK: Class Properties
-    var filters : [CIFilter]! = nil
-    var videoManager:VideoAnalgesic! = nil
-    let pinchFilterIndex = 2
-    var detector:CIDetector! = nil
+    var videoManager: VideoAnalgesic! = nil
     let bridge = OpenCVBridgeSub()
     
     //MARK: Outlets in view
-    @IBOutlet weak var flashSlider: UISlider!
-    @IBOutlet weak var stageLabel: UILabel!
-	
-	@IBOutlet weak var flashToggleButton: UIButton!
-	@IBOutlet weak var cameraSwitchButton: UIButton!
+	@IBOutlet weak var lineChartView: LineChartView!
+	@IBOutlet weak var bpmLabel: UILabel!
 	
     //MARK: ViewController Hierarchy
     override func viewDidLoad() {
         super.viewDidLoad()
         
         self.view.backgroundColor = nil
-        self.setupFilters()
-        
-        self.bridge.loadHaarCascade(withFilename: "nose")
         
         self.videoManager = VideoAnalgesic.sharedInstance
-        self.videoManager.setCameraPosition(position: AVCaptureDevice.Position.front)
-        
-        // create dictionary for face detection
-        // HINT: you need to manipulate these proerties for better face detection efficiency
-        let optsDetector = [CIDetectorAccuracy:CIDetectorAccuracyLow,CIDetectorTracking:true] as [String : Any]
-        
-        // setup a face detector in swift
-        self.detector = CIDetector(ofType: CIDetectorTypeFace,
-                                  context: self.videoManager.getCIContext(), // perform on the GPU is possible
-            options: (optsDetector as [String : AnyObject]))
+        self.videoManager.setCameraPosition(position: .back)
         
         self.videoManager.setProcessingBlock(newProcessBlock: self.processImage)
         
-        if !videoManager.isRunning{
+        if !videoManager.isRunning {
             videoManager.start()
         }
-    
+		videoManager.setFPS(desiredFrameRate: framesPerSecond)
+		
+		lineChartView.delegate = self
+		let dataSet = LineChartDataSet(values: [ChartDataEntry(x: 0, y: 0)], label: nil)
+		
+		dataSet.circleRadius = 0.0 // hide points (lines only)
+		dataSet.drawValuesEnabled = false // don't show labels on value points
+		dataSet.mode = .cubicBezier // smoothing
+		lineChartView.isUserInteractionEnabled = false
+		lineChartView.chartDescription = nil // no description label
+		lineChartView.legend.enabled = false // no legend
+//		lineChartView.leftAxis.axisMinimum = 0.0
+//		lineChartView.leftAxis.axisMaximum = 50.0
+		lineChartView.leftAxis.drawLabelsEnabled = false
+		lineChartView.rightAxis.drawLabelsEnabled = false
+		lineChartView.xAxis.drawLabelsEnabled = false
+		
+		
+		lineChartView.data = LineChartData(dataSet: dataSet)
+		
+		// dummy code to push random values to chart (for testing)
+		/*
+		Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+			let random = Double(arc4random())/Double(INT32_MAX)*10.0
+			self.addPointToChart(random)
+		}
+		*/
     }
+	
+	override func viewDidAppear(_ animated: Bool) {
+		let _ = self.videoManager.toggleFlash()
+	}
+	
+	override func viewDidDisappear(_ animated: Bool) {
+		let _ = self.videoManager.toggleFlash()
+	}
+	
+	func addPointToChart(_ value: Double) {
+		let dataSet = self.lineChartView.data!.dataSets[0]
+		
+		let x = dataSet.entryForIndex(dataSet.entryCount - 1)?.x
+		let _ = dataSet.addEntry(ChartDataEntry(x: x!+1, y: value))
+		if dataSet.entryCount > chartMaximumPoints {
+			let _ = dataSet.removeFirst()
+		}
+		self.lineChartView.data!.notifyDataChanged()
+		self.lineChartView.notifyDataSetChanged()
+	}
     
     //MARK: Process image output
     func processImage(inputImage:CIImage) -> CIImage{
-		/*
-        // detect faces
-        let f = getFaces(img: inputImage)
-        
-        // if no faces, just return original image
-        if f.count == 0 { return inputImage }
-        */
-        var retImage = inputImage
 
         // if you just want to process on separate queue use this code
         // this is a NON BLOCKING CALL, but any changes to the image in OpenCV cannot be displayed real time
-//        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0)) { () -> Void in
-//            self.bridge.setImage(retImage, withBounds: retImage.extent, andContext: self.videoManager.getCIContext())
-//            self.bridge.processImage()
-//        }
-        
-        // use this code if you are using OpenCV and want to overwrite the displayed image via OpenCv
-        // this is a BLOCKING CALL
-//        self.bridge.setTransforms(self.videoManager.transform)
-//        self.bridge.setImage(retImage, withBounds: retImage.extent, andContext: self.videoManager.getCIContext())
-//        self.bridge.processImage()
-//        retImage = self.bridge.getImage()
-        
-        //HINT: you can also send in the bounds of the face to ONLY process the face in OpenCV
-        // or any bounds to only process a certain bounding region in OpenCV
-        self.bridge.setTransforms(self.videoManager.transform)
-        self.bridge.setImage(retImage,
-                             withBounds: /*f[0].bounds*/ retImage.extent, // the first face bounds
-                             andContext: self.videoManager.getCIContext())
-        
-		let isFinger: Bool = self.bridge.processImage()
-        retImage = self.bridge.getImageComposite() // get back opencv processed part of the image (overlayed on original)
-		
 		DispatchQueue.main.async {
-			self.flashToggleButton.isEnabled = !isFinger
-			self.cameraSwitchButton.isEnabled = !isFinger
-			if(isFinger) {
-				let _ = self.videoManager.turnOnFlashwithLevel(1.0)
+			self.bridge.setImage(inputImage, withBounds: inputImage.extent, andContext: self.videoManager.getCIContext())
+			let redChannelMean = self.bridge.processImage()
+			
+			if 10...50 ~= redChannelMean  {
+				// if there's a finger
+				self.addPointToChart(redChannelMean)
 			} else {
-				self.videoManager.turnOffFlash()
+				// no finger
+				self.addPointToChart(0.0)
 			}
+			
 		}
 		
-        return retImage
+        return inputImage
     }
-    
-    //MARK: Setup filtering
-    func setupFilters(){
-        filters = []
-        
-        let filterPinch = CIFilter(name:"CIBumpDistortion")!
-        filterPinch.setValue(-0.5, forKey: "inputScale")
-        filterPinch.setValue(75, forKey: "inputRadius")
-        filters.append(filterPinch)
-        
-    }
-    
-    //MARK: Apply filters and apply feature detectors
-    func applyFiltersToFaces(inputImage:CIImage,features:[CIFaceFeature])->CIImage{
-        var retImage = inputImage
-        var filterCenter = CGPoint()
-        
-        for f in features {
-            //set where to apply filter
-            filterCenter.x = f.bounds.midX
-            filterCenter.y = f.bounds.midY
-            
-            //do for each filter (assumes all filters have property, "inputCenter")
-            for filt in filters{
-                filt.setValue(retImage, forKey: kCIInputImageKey)
-                filt.setValue(CIVector(cgPoint: filterCenter), forKey: "inputCenter")
-                // could also manipualte the radius of the filter based on face size!
-                retImage = filt.outputImage!
-            }
-        }
-        return retImage
-    }
-    
-    func getFaces(img:CIImage) -> [CIFaceFeature]{
-        // this ungodly mess makes sure the image is the correct orientation
-        //let optsFace = [CIDetectorImageOrientation:self.videoManager.getImageOrientationFromUIOrientation(UIApplication.sharedApplication().statusBarOrientation)]
-        let optsFace = [CIDetectorImageOrientation:self.videoManager.ciOrientation]
-        // get Face Features
-        return self.detector.features(in: img, options: optsFace) as! [CIFaceFeature]
-        
-    }
-    
-    
-    
-    @IBAction func swipeRecognized(_ sender: UISwipeGestureRecognizer) {
-        switch sender.direction {
-        case UISwipeGestureRecognizerDirection.left:
-            self.bridge.processType += 1
-        case UISwipeGestureRecognizerDirection.right:
-            self.bridge.processType -= 1
-        default:
-            break
-            
-        }
-        
-        stageLabel.text = "Stage: \(self.bridge.processType)"
-
-    }
-    
-    //MARK: Convenience Methods for UI Flash and Camera Toggle
-    @IBAction func flash(_ sender: AnyObject) {
-        if(self.videoManager.toggleFlash()){
-            self.flashSlider.value = 1.0
-        }
-        else{
-            self.flashSlider.value = 0.0
-        }
-    }
-    
-    @IBAction func switchCamera(_ sender: AnyObject) {
-        self.videoManager.toggleCameraPosition()
-    }
-    
-    @IBAction func setFlashLevel(_ sender: UISlider) {
-        if(sender.value>0.0){
-			let _ = self.videoManager.turnOnFlashwithLevel(sender.value)
-        }
-        else if(sender.value==0.0){
-            self.videoManager.turnOffFlash()
-        }
-    }
-
-   
+	
+//    @IBAction func switchCamera(_ sender: AnyObject) {
+//        self.videoManager.toggleCameraPosition()
+//    }
+	
 }
 
