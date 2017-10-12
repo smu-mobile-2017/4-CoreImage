@@ -12,7 +12,6 @@ import AVFoundation
 class FaceViewController: UIViewController   {
 
     //MARK: Class Properties
-    var filters : [CIFilter]! = nil
     var videoManager:VideoAnalgesic! = nil
     let pinchFilterIndex = 2
     var detector:CIDetector! = nil
@@ -22,7 +21,6 @@ class FaceViewController: UIViewController   {
         super.viewDidLoad()
         
         self.view.backgroundColor = nil
-        self.setupFilters()
         
         self.videoManager = VideoAnalgesic.sharedInstance
         self.videoManager.setCameraPosition(position: AVCaptureDevice.Position.front)
@@ -43,37 +41,56 @@ class FaceViewController: UIViewController   {
         }
     }
     
-    //MARK: Setup filtering
-    func setupFilters(){
-        filters = []
-        
-        let filterPinch = CIFilter(name:"CIBumpDistortion")!
-        filterPinch.setValue(-0.5, forKey: "inputScale")
-        filterPinch.setValue(75, forKey: "inputRadius")
-        filters.append(filterPinch)
-        
-    }
-    
     //MARK: Apply filters and apply feature detectors
     func applyFiltersToFaces(inputImage:CIImage,features:[CIFaceFeature])->CIImage{
-        var retImage = inputImage
-		retImage = highlightFaces(inputImage: inputImage, features: features)
-//        var filterCenter = CGPoint()
-//
-//        for f in features {
-//            //set where to apply filter
-//            filterCenter.x = f.bounds.midX
-//            filterCenter.y = f.bounds.midY
-//
-//            //do for each filter (assumes all filters have property, "inputCenter")
-//            for filt in filters{
-//                filt.setValue(retImage, forKey: kCIInputImageKey)
-//                filt.setValue(CIVector(cgPoint: filterCenter), forKey: "inputCenter")
-//                // could also manipualte the radius of the filter based on face size!
-//                retImage = filt.outputImage!
-//            }
-//        }
-        return retImage
+		//first highlight faces
+        var retImage = highlightFaces(inputImage: inputImage, features: features)
+		
+		//setup vars
+		var featurePosition = CGPoint()
+		let holeFilter = CIFilter(name:"CIHoleDistortion",
+		                          withInputParameters: ["inputRadius" : 10.0])!
+
+		//mark eyes and mouth
+        for f in features {
+			if(f.hasMouthPosition) {
+				//get feature postition
+				featurePosition = f.mouthPosition
+				
+				//set filter params
+				holeFilter.setValue(retImage, forKey: "inputImage")
+				holeFilter.setValue(CIVector(cgPoint:featurePosition), forKey: "inputCenter")
+				
+				//return filtered image
+				retImage = holeFilter.outputImage!
+			}
+			
+			if(f.hasLeftEyePosition) {
+				//get feature postition
+				featurePosition = f.leftEyePosition
+				
+				//set filter params
+				holeFilter.setValue(retImage, forKey: "inputImage")
+				holeFilter.setValue(CIVector(cgPoint:featurePosition), forKey: "inputCenter")
+				
+				//return filtered image
+				retImage = holeFilter.outputImage!
+			}
+			
+			if(f.hasRightEyePosition) {
+				//get feature postition
+				featurePosition = f.rightEyePosition
+				
+				//set filter params
+				holeFilter.setValue(retImage, forKey: "inputImage")
+				holeFilter.setValue(CIVector(cgPoint:featurePosition), forKey: "inputCenter")
+				
+				//return filtered image
+				retImage = holeFilter.outputImage!
+			}
+        }
+		
+        return retImage //return filtered image
     }
 	
 	func highlightFaces(inputImage:CIImage,features:[CIFaceFeature])->CIImage {
@@ -125,9 +142,9 @@ class FaceViewController: UIViewController   {
     func getFaces(img:CIImage) -> [CIFaceFeature]{
         // this ungodly mess makes sure the image is the correct orientation
         let optsFace = [CIDetectorImageOrientation:self.videoManager.ciOrientation]
-        // get Face Features
+		
+		// get Face Features
         return self.detector.features(in: img, options: optsFace) as! [CIFaceFeature]
-        
     }
     
     //MARK: Process image output
@@ -135,7 +152,7 @@ class FaceViewController: UIViewController   {
         
         // detect faces
         let f = getFaces(img: inputImage)
-        
+		
         // if no faces, just return original image
         if f.count == 0 { return inputImage }
         
