@@ -17,6 +17,15 @@ class FaceViewController: UIViewController   {
     var videoManager:VideoAnalgesic! = nil
     let pinchFilterIndex = 2
     var detector:CIDetector! = nil
+	
+	//variables for tracking remaining label persistance
+	var blinking = 0
+	var smiling = 0
+	
+	//for trackig blink state
+	var blinkID: Int32 = -1
+	var leftClosed = false
+	var rightClosed = false
     
     //MARK: ViewController Hierarchy
     override func viewDidLoad() {
@@ -176,25 +185,41 @@ class FaceViewController: UIViewController   {
     }
 	
 	func updateFaceStateStatus(face:CIFaceFeature) {
-		var statusText : [String]! = [String]()
-		//var ff = face.rightEyeClosed
-		if(face.hasSmile) {statusText.append("Smiling")}
-		if(face.leftEyeClosed) {statusText.append("Left Eye Closed")}
-		if(face.rightEyeClosed) {statusText.append("Right Eye Closed")}
+		if(face.hasSmile) {smiling = 3} //Add text if face is smiling
 		
-		print(face.hasSmile)
+		//do we have an ID for this face and does it match the previous one?
+		if(face.hasTrackingID && blinkID == face.trackingID) {
+			//If there is a transision, declare blinking and store the new eye closure state
+			if(leftClosed != face.leftEyeClosed) {
+				blinking = 4
+				leftClosed = !leftClosed
+			} else if(rightClosed != face.rightEyeClosed) {
+				blinking = 4
+				rightClosed = !rightClosed
+			}
+		} else {
+			//if we don't have an ID or it doesn't match then reset
+			blinkID = face.trackingID
+			leftClosed = face.leftEyeClosed
+			rightClosed = face.rightEyeClosed
+		}
 		
+		//update the label
 		DispatchQueue.main.async {
-			if(statusText.count == 0) {
+			if (self.smiling > 0 && self.blinking > 0) {
+				self.faceStateLabel.text = " Smiling & Blinking "
+			} else if (self.smiling > 0) {
+				self.faceStateLabel.text = " Smiling "
+			} else if (self.blinking > 0) {
+				self.faceStateLabel.text = " Blinking "
+			} else {
 				self.faceStateLabel.text = ""
-			} else if ( statusText.count == 1) {
-				self.faceStateLabel.text = statusText[0]
-			} else if ( statusText.count == 2) {
-				self.faceStateLabel.text = statusText[0] + ", " + statusText[1]
-			} else if ( statusText.count == 3) {
-				self.faceStateLabel.text = statusText[0] + ",  " + statusText[1] + ", and " + statusText[2]
 			}
 		}
+		
+		//update persistance values
+		if(smiling > 0) { smiling = smiling - 1 }
+		if(blinking > 0) { blinking = blinking - 1 }
 	}
 	
 	@IBAction func switchCamera(_ sender: AnyObject) {
