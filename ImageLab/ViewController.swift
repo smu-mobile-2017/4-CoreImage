@@ -9,13 +9,17 @@
 import UIKit
 import AVFoundation
 import Charts
+import Accelerate
 
 class ViewController: UIViewController, ChartViewDelegate {
 	
 	let chartMaximumPoints: Int = 100
-	let framesPerSecond: Double = 120.0
+	let framesPerSecond: Double = 30.0
+	let measurementTime: Double = 7.0 //time in seconds
+	var ppgArray: [Double]! = nil
+	var ppgArrayLength: Int = 0
 	
-	var beatsPerMinute: Int? = nil {
+	var beatsPerMinute: Double? = nil {
 		didSet {
 			DispatchQueue.main.async {
 				if let bpm = self.beatsPerMinute {
@@ -38,7 +42,12 @@ class ViewController: UIViewController, ChartViewDelegate {
     //MARK: ViewController Hierarchy
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+		
+		self.ppgArray = [Double]()
+		
+		self.ppgArrayLength = Int(self.framesPerSecond * self.measurementTime)
+		ppgArray.reserveCapacity(self.ppgArrayLength) //set the size
+		
         self.view.backgroundColor = nil
         
         self.videoManager = VideoAnalgesic.sharedInstance
@@ -97,7 +106,55 @@ class ViewController: UIViewController, ChartViewDelegate {
 		self.lineChartView.data!.notifyDataChanged()
 		self.lineChartView.notifyDataSetChanged()
 	}
-    
+	
+	func addPointToPPGArray(_ ppgPoint: Double) {
+		self.ppgArray.append(ppgPoint) //add to the array
+		
+		//check size, if at measurmentTime * framePerSecond in length; find peaks and count beats
+		if(self.ppgArray.count == self.ppgArrayLength) {
+			//find peaks
+			let heartBeatCount: Double = Double(findNumberOfPeaks())
+			print(heartBeatCount)
+			//update label
+			self.beatsPerMinute = 60.0/measurementTime * heartBeatCount
+			
+			//reset
+			resetPPGArray()
+		}
+	}
+	
+	///ppgArray need to be of even length, no error checking
+	func findNumberOfPeaks() -> Int {
+		let windowSize: Int = 25 //keep odd
+		let windowCenterIdx: Int = windowSize/2 + 1 // floor(odd/2) for 0...
+		var heartBeatCount: Int = 0
+		let loopLength = (self.ppgArray.count - windowSize) + 1
+		
+	
+		for i in 0 ..< loopLength {  //doing for loops like this is horrible!!!
+			//find max value in window
+			var magResult = 0.0
+			var peakIndex: vDSP_Length = 0
+			ppgArray.withUnsafeBufferPointer { ptr in
+				let slidingPtr = ptr.baseAddress! + i
+				vDSP_maxviD(slidingPtr, 1, &magResult, &peakIndex, vDSP_Length(windowSize))
+			}
+			
+			if (peakIndex == windowCenterIdx) {
+				heartBeatCount += 1
+				print(Int(peakIndex) + i)
+			}
+		}
+		
+		return heartBeatCount
+	}
+	
+	func resetPPGArray() {
+		self.ppgArray.removeAll(keepingCapacity: true) //empty array
+		
+		print("reset scan")
+	}
+	
     //MARK: Process image output
     func processImage(inputImage:CIImage) -> CIImage{
 
@@ -110,9 +167,11 @@ class ViewController: UIViewController, ChartViewDelegate {
 			if 10...50 ~= redChannelMean  {
 				// if there's a finger
 				self.addPointToChart(redChannelMean)
+				self.addPointToPPGArray(redChannelMean)
 			} else {
 				// no finger
 				self.addPointToChart(0.0)
+				self.resetPPGArray()
 			}
 			
 		}
