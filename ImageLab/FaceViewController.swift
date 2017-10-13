@@ -2,14 +2,16 @@
 //  ViewController.swift
 //  ImageLab
 //
-//  Created by Eric Larson
+//  Seed code by Eric Larson
 //  Copyright © 2016 Eric Larson. All rights reserved.
+//
+//  Writen by Justin Wilson, Paul Herz, and Jake Rowland
 //
 
 import UIKit
 import AVFoundation
 
-class FaceViewController: UIViewController   {
+class FaceViewController: UIViewController {
 	//outlet to label for face status
 	@IBOutlet weak var faceStateLabel: UILabel!
 	
@@ -18,7 +20,7 @@ class FaceViewController: UIViewController   {
     let pinchFilterIndex = 2
     var detector:CIDetector! = nil
 	
-	//variables for tracking remaining label persistance
+	//Decaying flags for tracking remaining label persistance
 	var blinking = 0
 	var smiling = 0
 	
@@ -105,13 +107,18 @@ class FaceViewController: UIViewController   {
         return retImage //return filtered image
     }
 	
+	
+	///Highlights faces with a inverted circle over face
 	func highlightFaces(inputImage:CIImage,features:[CIFaceFeature])->CIImage {
 		var circleImage : CIImage! = nil
 		var maskImage : CIImage! = nil
 		var inverseImage: CIImage! = nil
 		var filterCenter = CGPoint()
 		
-		/*	recipie for mask - https://developer.apple.com/library/content/documentation/GraphicsImaging/Conceptual/CoreImaging/ci_filer_recipes/ci_filter_recipes.html#//apple_ref/doc/uid/TP30001185-CH4-SW1 */
+		/* build mask image
+		   recipie for mask - https://developer.apple.com/library/content/documentation/GraphicsImaging/Conceptual/CoreImaging/ci_filer_recipes/ci_filter_recipes.html#//apple_ref/doc/uid/TP30001185-CH4-SW1 */
+		
+		let radialGradient: CIFilter = CIFilter(name:"CIRadialGradient")!
 		
 		for f in features {
 			//set where to apply filter
@@ -119,7 +126,6 @@ class FaceViewController: UIViewController   {
 			filterCenter.y = f.bounds.origin.y + (f.bounds.size.height / 2)
 			let radius = min(f.bounds.size.width, f.bounds.size.height) / 1.5
 			
-			let radialGradient: CIFilter = CIFilter(name:"CIRadialGradient")!
 			radialGradient.setValue(CIVector(cgPoint: filterCenter), forKey:kCIInputCenterKey)
 			radialGradient.setValue(radius, forKey:"inputRadius0")
 			radialGradient.setValue(radius + 1.0, forKey:"inputRadius1")
@@ -137,22 +143,23 @@ class FaceViewController: UIViewController   {
 			}
 		}
 		
-		//create inverse
+		//create inverse image
 		let colorInverseFilter: CIFilter = CIFilter(name: "CIColorInvert")!
 		colorInverseFilter.setValue(inputImage, forKey: kCIInputImageKey)
 		inverseImage = colorInverseFilter.outputImage
 		
-		//blend
+		//blend inverse image and original together using mask
 		let blendWithMaskFilter: CIFilter = CIFilter(name: "CIBlendWithMask")!
 		blendWithMaskFilter.setValue(inverseImage, forKey: kCIInputImageKey)
 		blendWithMaskFilter.setValue(inputImage, forKey: kCIInputBackgroundImageKey)
 		blendWithMaskFilter.setValue(maskImage, forKey: kCIInputMaskImageKey)
 		
-		return blendWithMaskFilter.outputImage!
+		return blendWithMaskFilter.outputImage! //return resulting image
 	}
-    
+	
+	///Detect faces in img
     func getFaces(img:CIImage) -> [CIFaceFeature]{
-        // this ungodly mess makes sure the image is the correct orientation
+        // this ungodly mess makes sure the image is the correct orientation and enables eye blink and smile detections
 		let optsFace = [CIDetectorImageOrientation: self.videoManager.ciOrientation, CIDetectorEyeBlink:true, CIDetectorSmile:true] as [String : Any]
 
 		// get Face Features
@@ -184,18 +191,19 @@ class FaceViewController: UIViewController   {
         return applyFiltersToFaces(inputImage: inputImage, features: f)
     }
 	
+	//Update face status label if smiling or blinking is detected
 	func updateFaceStateStatus(face:CIFaceFeature) {
-		if(face.hasSmile) {smiling = 3} //Add text if face is smiling
+		if(face.hasSmile) {smiling = 4} //reset flag to 3 if face is detected
 		
 		//do we have an ID for this face and does it match the previous one?
 		if(face.hasTrackingID && blinkID == face.trackingID) {
 			//If there is a transision, declare blinking and store the new eye closure state
 			if(leftClosed != face.leftEyeClosed) {
-				blinking = 4
-				leftClosed = !leftClosed
+				blinking = 4 //reset flag to 4
+				leftClosed = !leftClosed //update state
 			} else if(rightClosed != face.rightEyeClosed) {
-				blinking = 4
-				rightClosed = !rightClosed
+				blinking = 4 //reset flag to 4
+				rightClosed = !rightClosed //update state
 			}
 		} else {
 			//if we don't have an ID or it doesn't match then reset
@@ -217,15 +225,15 @@ class FaceViewController: UIViewController   {
 			}
 		}
 		
-		//update persistance values
+		//decrease persistance flag values by 1
 		if(smiling > 0) { smiling = smiling - 1 }
 		if(blinking > 0) { blinking = blinking - 1 }
 	}
 	
+	///IBAction to switch camera if button selected
 	@IBAction func switchCamera(_ sender: AnyObject) {
 	        self.videoManager.toggleCameraPosition()
 	
 	}
-   
 }
 

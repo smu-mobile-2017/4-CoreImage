@@ -2,28 +2,31 @@
 //  ViewController.swift
 //  ImageLab
 //
-//  Created by Eric Larson
+//  Seed code by Eric Larson
 //  Copyright © 2016 Eric Larson. All rights reserved.
+//
+//  Writen by Justin Wilson, Paul Herz, and Jake Rowland
 //
 
 import UIKit
 import AVFoundation
-import Charts
-import Accelerate
+import Charts //For displaying the ppg
+import Accelerate //Speed up the windowing method
 
 class ViewController: UIViewController, ChartViewDelegate {
 	
 	let chartMaximumPoints: Int = 100
 	let framesPerSecond: Double = 30.0
-	let measurementTime: Double = 7.0 //time in seconds
-	var ppgArray: [Double]! = nil
-	var ppgArrayLength: Int = 0
+	let measurementTime: Double = 7.0 //time required for measuring pulse in seconds
+	var ppgArray: [Double]! = nil //measurment storage
+	var ppgArrayLength: Int = 0 //length of the ppgArray
 	
+	//update the bpmLabel if a new bpm measurment is calculated
 	var beatsPerMinute: Double? = nil {
 		didSet {
 			DispatchQueue.main.async {
 				if let bpm = self.beatsPerMinute {
-					self.bpmLabel.text = "\(bpm) bpm"
+					self.bpmLabel.text = String.localizedStringWithFormat("%.2f bpm", bpm)//"\(bpm) bpm"
 				} else {
 					self.bpmLabel.text = "—"
 				}
@@ -43,10 +46,11 @@ class ViewController: UIViewController, ChartViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
 		
-		self.ppgArray = [Double]()
+		self.ppgArray = [Double]() //init ppgArrray
 		
+		//determine needed length
 		self.ppgArrayLength = Int(self.framesPerSecond * self.measurementTime)
-		ppgArray.reserveCapacity(self.ppgArrayLength) //set the size
+		ppgArray.reserveCapacity(self.ppgArrayLength) //set the length, ensures resize never happens
 		
         self.view.backgroundColor = nil
         
@@ -63,50 +67,46 @@ class ViewController: UIViewController, ChartViewDelegate {
 		lineChartView.delegate = self
 		let dataSet = LineChartDataSet(values: [ChartDataEntry(x: 0, y: 0)], label: nil)
 		
+		//setup chart
 		dataSet.circleRadius = 0.0 // hide points (lines only)
 		dataSet.drawValuesEnabled = false // don't show labels on value points
 		dataSet.mode = .cubicBezier // smoothing
 		lineChartView.isUserInteractionEnabled = false
 		lineChartView.chartDescription = nil // no description label
 		lineChartView.legend.enabled = false // no legend
-//		lineChartView.leftAxis.axisMinimum = 0.0
-//		lineChartView.leftAxis.axisMaximum = 50.0
 		lineChartView.leftAxis.drawLabelsEnabled = false
 		lineChartView.rightAxis.drawLabelsEnabled = false
 		lineChartView.xAxis.drawLabelsEnabled = false
-		
-		
 		lineChartView.data = LineChartData(dataSet: dataSet)
-		
-		// dummy code to push random values to chart (for testing)
-		/*
-		Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-			let random = Double(arc4random())/Double(INT32_MAX)*10.0
-			self.addPointToChart(random)
-		}
-		*/
+
     }
 	
+	//View managment
 	override func viewDidAppear(_ animated: Bool) {
-		let _ = self.videoManager.toggleFlash()
+		let _ = self.videoManager.toggleFlash() //turn on flash
 	}
 	
+	//View managment
 	override func viewDidDisappear(_ animated: Bool) {
-		let _ = self.videoManager.toggleFlash()
+		let _ = self.videoManager.toggleFlash()//trun off flash
 	}
 	
+	///Adds point to chart's datastructure
 	func addPointToChart(_ value: Double) {
 		let dataSet = self.lineChartView.data!.dataSets[0]
 		
-		let x = dataSet.entryForIndex(dataSet.entryCount - 1)?.x
-		let _ = dataSet.addEntry(ChartDataEntry(x: x!+1, y: value))
+		let x = dataSet.entryForIndex(dataSet.entryCount - 1)?.x //get the x value for the next entry
+		let _ = dataSet.addEntry(ChartDataEntry(x: x!+1, y: value)) //Add point, (x+1, value)
 		if dataSet.entryCount > chartMaximumPoints {
-			let _ = dataSet.removeFirst()
+			let _ = dataSet.removeFirst() //remove entry if data set is to large to display, (FIFO)
 		}
+		
+		//Notify
 		self.lineChartView.data!.notifyDataChanged()
 		self.lineChartView.notifyDataSetChanged()
 	}
 	
+	///Adds point to ppgArray for locating peaks and calculates bpm if array filled
 	func addPointToPPGArray(_ ppgPoint: Double) {
 		self.ppgArray.append(ppgPoint) //add to the array
 		
@@ -114,8 +114,8 @@ class ViewController: UIViewController, ChartViewDelegate {
 		if(self.ppgArray.count == self.ppgArrayLength) {
 			//find peaks
 			let heartBeatCount: Double = Double(findNumberOfPeaks())
-			print(heartBeatCount)
-			//update label
+			
+			//update label by updating property
 			self.beatsPerMinute = 60.0/measurementTime * heartBeatCount
 			
 			//reset
@@ -123,7 +123,7 @@ class ViewController: UIViewController, ChartViewDelegate {
 		}
 	}
 	
-	///ppgArray need to be of even length, no error checking
+	///Finds peaks in ppgArray, ensure even length, no error checking
 	func findNumberOfPeaks() -> Int {
 		let windowSize: Int = 25 //keep odd
 		let windowCenterIdx: Int = windowSize/2 + 1 // floor(odd/2) for 0...
@@ -142,17 +142,17 @@ class ViewController: UIViewController, ChartViewDelegate {
 			
 			if (peakIndex == windowCenterIdx) {
 				heartBeatCount += 1
-				print(Int(peakIndex) + i)
+				//print(Int(peakIndex) + i) //for debuging
 			}
 		}
 		
 		return heartBeatCount
 	}
 	
+	//resets the ppgArray ensurinmg capacity remains the same
 	func resetPPGArray() {
-		self.ppgArray.removeAll(keepingCapacity: true) //empty array
-		
-		print("reset scan")
+		self.ppgArray.removeAll(keepingCapacity: true) //empty array, maintain capacity
+		//print("reset scan") //for debuging
 	}
 	
     //MARK: Process image output
@@ -170,18 +170,12 @@ class ViewController: UIViewController, ChartViewDelegate {
 				self.addPointToPPGArray(redChannelMean)
 			} else {
 				// no finger
-				self.addPointToChart(0.0)
-				self.resetPPGArray()
+				self.addPointToChart(0.0) //bottom out
+				self.resetPPGArray() //trigger a 
 			}
 			
 		}
-		
         return inputImage
     }
-	
-//    @IBAction func switchCamera(_ sender: AnyObject) {
-//        self.videoManager.toggleCameraPosition()
-//    }
-	
 }
 
